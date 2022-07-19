@@ -13,6 +13,7 @@ const (
 	NftIDs               = "NftIDs"
 	NftIDsCached         = "NftIDsCached"
 	All                  = "All"
+	Lite                 = "Lite"
 	SimpleVerbosity      = 1
 	IntermidateVerbosity = 2
 	FullVerbosity        = 3

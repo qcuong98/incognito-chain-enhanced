@@ -191,6 +191,34 @@ func initPoolPairStatesFromDB(stateDB *statedb.StateDB) (map[string]*PoolPairSta
 	return res, nil
 }
 
+func initPoolPairStatesFromDBLite(stateDB *statedb.StateDB) (map[string]*PoolPairState, error) {
+	poolPairsStates, err := statedb.GetPdexv3PoolPairs(stateDB)
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string]*PoolPairState)
+	for poolPairID, poolPairState := range poolPairsStates {
+
+		orderbook := &Orderbook{[]*Order{}}
+		orderMap, err := statedb.GetPdexv3Orders(stateDB, poolPairState.PoolPairID())
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range orderMap {
+			v := item.Value()
+			orderbook.InsertOrder(&v)
+		}
+
+		poolPair := NewPoolPairStateWithValue(
+			poolPairState.Value(), nil, *orderbook,
+			nil, nil, nil, nil,
+			nil, nil, nil,
+		)
+		res[poolPairID] = poolPair
+	}
+	return res, nil
+}
+
 func initShares(poolPairID string, stateDB *statedb.StateDB) (map[string]*Share, error) {
 	res := make(map[string]*Share)
 	shareStates, err := statedb.GetPdexv3Shares(stateDB, poolPairID)
@@ -556,5 +584,24 @@ func InitStateV2FromDBWithoutNftIDs(stateDB *statedb.StateDB, beaconHeight uint6
 	return newStateV2WithValue(
 		waitingContributions, make(map[string]rawdbv2.Pdexv3Contribution),
 		poolPairs, params, stakingPools, map[string]uint64{},
+	), nil
+}
+
+func InitStateV2FromDBLite(stateDB *statedb.StateDB, beaconHeight uint64) (*stateV2, error) {
+	if beaconHeight < config.Param().PDexParams.Pdexv3BreakPointHeight {
+		return nil, fmt.Errorf("[pdex] Beacon height %v < Pdexv3BreakPointHeight %v", beaconHeight, config.Param().PDexParams.Pdexv3BreakPointHeight)
+	}
+	paramsState, err := statedb.GetPdexv3Params(stateDB)
+	params := NewParamsWithValue(paramsState)
+	if err != nil {
+		return nil, err
+	}
+	poolPairs, err := initPoolPairStatesFromDBLite(stateDB)
+	if err != nil {
+		return nil, err
+	}
+	return newStateV2WithValue(
+		nil, nil,
+		poolPairs, params, nil, nil,
 	), nil
 }

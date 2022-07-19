@@ -366,6 +366,12 @@ func (blockService BlockService) GetPdexv3State(
 				return nil, NewRPCError(GetPdexv3StateError, err)
 			}
 
+		case Lite:
+			res, err = getPdexv3StateLite(beaconHeight, beaconTimeStamp, beaconFeatureStateDB)
+			if err != nil {
+				return nil, NewRPCError(GetPdexv3StateError, err)
+			}
+
 		default:
 			return res, NewRPCError(GetPdexv3StateError, errors.New("Can't recognize filter key"))
 		}
@@ -501,6 +507,31 @@ func getPdexv3State(
 		WaitingContributions: &waitingContributions,
 		NftIDs:               &nftIDs,
 		StakingPools:         &stakingPools,
+	}
+	return res, nil
+}
+
+func getPdexv3StateLite(
+	beaconHeight uint64, beaconTimeStamp int64, stateDB *statedb.StateDB,
+) (interface{}, error) {
+	pDexv3State, err := pdex.InitStateV2FromDBLite(stateDB, beaconHeight)
+	if err != nil {
+		return nil, NewRPCError(GetPdexv3StateError, err)
+	}
+
+	poolPairs := map[string]*pdex.PoolPairState{}
+	err = json.Unmarshal(pDexv3State.Reader().PoolPairs(), &poolPairs)
+	if err != nil {
+		return nil, NewRPCError(GetPdexv3StateError, err)
+	}
+
+	cloneParam := pdex.NewParams()
+	*cloneParam = *pDexv3State.Reader().Params()
+
+	res := &jsonresult.Pdexv3State{
+		BeaconTimeStamp: beaconTimeStamp,
+		Params:          cloneParam,
+		PoolPairs:       &poolPairs,
 	}
 	return res, nil
 }
