@@ -95,7 +95,7 @@ func (bc *BlockChain) InitFeatureStat() {
 	go func() {
 		for {
 			bc.SendFeatureStat()
-			time.Sleep(10 * time.Second)
+			time.Sleep(10 * time.Minute)
 		}
 	}()
 }
@@ -254,8 +254,8 @@ func (stat *FeatureStat) Report(beaconView *BeaconBestState) FeatureReportInfo {
 }
 
 func (featureStat *FeatureStat) addNode(timestamp int, key string, features []string) {
-	featureStat.lock.RLock()
-	defer featureStat.lock.RUnlock()
+	featureStat.lock.Lock()
+	defer featureStat.lock.Unlock()
 
 	//not update from old message
 	if _, ok := featureStat.nodes[key]; ok && featureStat.nodes[key].Timestamp > timestamp {
